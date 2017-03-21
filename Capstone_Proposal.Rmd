@@ -1,0 +1,36 @@
+---
+title: "Capstone Proposal"
+author: "Tim Harvey"
+date: "3/20/2017"
+header-includes:
+    - \usepackage{setspace}\doublespacing
+output:
+  pdf_document: default
+---
+
+##Goal
+
+The goal of this project is to determine if the local uninsured rate has an effect on the readmission rate of hospitals and whether negative effects can be mitigated by discharge counseling.
+
+##Audience
+
+The audience for this analysis is both hospital administrators and those that have an interest in insurance policy.  If an administrator finds the local population to have a high uninsured rate, the ability to mitigate this with additional efforts targeted toward discharge counseling could be a viable technique to lower readmission rates.  The readmission rate is a key indicator of quality of care and healthcare facilities are penalized by Medicare for high readmission rates.  These penalties result in reimbursements being withheld and in October of 2016 these penalties were increased by 20 percent.
+
+In order to increase the quality of patient outcomes, advocates for increased insurance coverage may be interested in the analysis as evidence that increases in insurance coverage lower readmission rates.  Lower readmission rates have the effect of lowering overall healthcare costs.
+
+##Data
+
+The data used for this analysis will be the Small Area Health Insurance Estimates by the US Census Bureau (https://www.census.gov/did/www/sahie/data/20082014/index.html) and the Hospital-level HCAHPS data available from Medicare (https://data.medicare.gov/data/hospital-compare).
+
+##Solution Approach
+
+The first step is using the SAHIE data to determine the mean uninsured rate for each county in the United States that also has a hospital. It might be advisable to use the mean for older age groups as the ages of hospital patients tend to skew older and possibly leverage geolocation data to account for counties where there are no hospitals.
+
+Once the mean uninsured rate of the population served by each hospital is determined it can then be correlated to the readmission rate for each hospital.  If there is a correlation, then the results of the HCAHPS survey can be used to determine if there is a correlation between discharge counseling and readmission rate among hospitals that have similar rates of uninsured patients.
+
+##Deliverables
+
+1. Data munging code in R Markdown document
+2. Analysis code in R Markdown document
+3. Keynote slide deck
+
