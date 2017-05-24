@@ -13,6 +13,8 @@ sahie_2014_clean <- read.csv(file.path("Data/", "sahie_2014.csv"),stringsAsFacto
 sahie_2014_clean$PCTELIG <- as.numeric(sahie_2014_clean$PCTELIG)
 sahie_2014_clean$state_name <- as.factor(state.abb[match(sahie_2014_clean$state_name, state.name)])
 sahie_2014_clean$county_name <- as.factor(toupper(sahie_2014_clean$county_name))
+sahie_2014_clean$county_name <- as.factor(gsub(" COUNTY", "",sahie_2014_clean$county_name))
+sahie_2014_clean$county_name <- as.factor(gsub(" PARISH", "",sahie_2014_clean$county_name))
 
 
 sahie_2015_clean <- read.csv(file.path("Data/", "sahie_2015.csv"),stringsAsFactors = FALSE, sep = ",", skip=79, strip.white = TRUE, na.strings=c("")) %>%
@@ -22,6 +24,8 @@ sahie_2015_clean <- read.csv(file.path("Data/", "sahie_2015.csv"),stringsAsFacto
 sahie_2015_clean$PCTELIG <- as.numeric(sahie_2015_clean$PCTELIG)
 sahie_2015_clean$state_name <- as.factor(state.abb[match(sahie_2015_clean$state_name, state.name)])
 sahie_2015_clean$county_name <- as.factor(toupper(sahie_2015_clean$county_name))
+sahie_2015_clean$county_name <- as.factor(gsub(" COUNTY", "",sahie_2015_clean$county_name))
+sahie_2015_clean$county_name <- as.factor(gsub(" PARISH", "",sahie_2015_clean$county_name))
 
 hcahps_clean <- hcahps_201404_201503 <- read.csv(file.path("Data", "HCAHPS_Hospital_201404-201503.csv"),stringsAsFactors = FALSE, sep = ",", strip.white = TRUE, na.strings=c("", "Not Available")) %>%
   filter(HCAHPS.Measure.ID == "H_COMP_6_Y_P", County.Name != "NA", HCAHPS.Answer.Percent != "NA") %>%
