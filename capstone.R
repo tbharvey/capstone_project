@@ -60,5 +60,5 @@ str(hcahps_clean)
 str(readmit_201307_201406_clean)
 str(readmit_201407_201506_clean)
 
-inner_join(sahie_2014_clean, sahie_2015_clean, by=c("state_name" = "state_name", "county_name" = "county_name")) %>%
-  mutate( (PCTELIG.x*0.25)+(PCTELIG.y*0.75) )
+sahie_combined <- inner_join(sahie_2014_clean, sahie_2015_clean, by=c("state_name" = "state_name", "county_name" = "county_name")) %>%
+  mutate( combined_metric = (PCTELIG.x*0.25)+(PCTELIG.y*0.75) )
