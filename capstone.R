@@ -54,9 +54,11 @@ readmit_201407_201506_clean$Measure.End.Date <- as.Date(gsub( "6/30/15", "06/30/
 readmit_201407_201506_clean$State <- as.factor(readmit_201407_201506_clean$State)
 readmit_201407_201506_clean$County.Name <- as.factor(readmit_201407_201506_clean$County.Name)
 
-
 str(sahie_2014_clean)
 str(sahie_2015_clean)
 str(hcahps_clean)
 str(readmit_201307_201406_clean)
 str(readmit_201407_201506_clean)
+
+inner_join(sahie_2014_clean, sahie_2015_clean, by=c("state_name" = "state_name", "county_name" = "county_name")) %>%
+  mutate( (PCTELIG.x*0.25)+(PCTELIG.y*0.75) )
