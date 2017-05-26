@@ -1,11 +1,5 @@
 library("dplyr")
 
-#sahie_2014 <- read.csv(file.path("Data/", "sahie_2014.csv"),sep = ",", skip=79, strip.white = TRUE, na.strings=c(""))
-#sahie_2015 <- read.csv(file.path("Data/", "sahie_2015.csv"),sep = ",", skip=79, strip.white = TRUE, na.strings=c(""))
-#hcahps_201404_201503 <- read.csv(file.path("Data", "HCAHPS_Hospital_201404-201503.csv"),sep = ",", strip.white = TRUE, na.strings=c("", "Not Available"))
-#readmit_201307_201406 <- read.csv(file.path("Data", "Readmissions_and_Deaths 201307-201406_Hospital.csv"),sep = ",", strip.white = TRUE, na.strings=c("", "Not Available"))
-#readmit_201407_201506 <- read.csv(file.path("Data", "Readmissions_and_Deaths 201407-201506_Hospital.csv"),sep = ",", strip.white = TRUE, na.strings=c("", "Not Available"))
-
 sahie_2014_clean <- read.csv(file.path("Data/", "sahie_2014.csv"),stringsAsFactors = FALSE, sep = ",", skip=79, strip.white = TRUE, na.strings=c("")) %>%
   filter(agecat == 0, racecat == 0, sexcat == 0, iprcat == 0, county_name != "NA") %>%
   select(year, state_name, county_name, PCTELIG)
@@ -15,7 +9,6 @@ sahie_2014_clean$state_name <- as.factor(state.abb[match(sahie_2014_clean$state_
 sahie_2014_clean$county_name <- as.factor(toupper(sahie_2014_clean$county_name))
 sahie_2014_clean$county_name <- as.factor(gsub(" COUNTY", "",sahie_2014_clean$county_name))
 sahie_2014_clean$county_name <- as.factor(gsub(" PARISH", "",sahie_2014_clean$county_name))
-
 
 sahie_2015_clean <- read.csv(file.path("Data/", "sahie_2015.csv"),stringsAsFactors = FALSE, sep = ",", skip=79, strip.white = TRUE, na.strings=c("")) %>%
   filter(agecat == 0, racecat == 0, sexcat == 0, iprcat == 0, county_name != "NA") %>%
@@ -41,7 +34,7 @@ readmit_201307_201406_clean <- read.csv(file.path("Data", "Readmissions_and_Deat
   select(Measure.Start.Date, Measure.End.Date, State, County.Name, Measure.ID, Score)
 
 readmit_201307_201406_clean$Measure.Start.Date <- as.Date(gsub( "7/1/13", "07/01/2013"  ,readmit_201307_201406_clean$Measure.Start.Date), "%m/%d/%Y")
-readmit_201307_201406_clean$Measure.End.Date <- as.Date(gsub( "6/30/14", "06/30/2014"  ,readmit_201307_201406_clean$Measure.Start.Date), "%m/%d/%Y")
+readmit_201307_201406_clean$Measure.End.Date <- as.Date(gsub( "6/30/14", "06/30/2014"  ,readmit_201307_201406_clean$Measure.End.Date), "%m/%d/%Y")
 readmit_201307_201406_clean$State <- as.factor(readmit_201307_201406_clean$State)
 readmit_201307_201406_clean$County.Name <- as.factor(readmit_201307_201406_clean$County.Name)
 
@@ -50,15 +43,20 @@ readmit_201407_201506_clean <- read.csv(file.path("Data", "Readmissions_and_Deat
   select(Measure.Start.Date, Measure.End.Date, State, County.Name, Measure.ID, Score)
 
 readmit_201407_201506_clean$Measure.Start.Date <- as.Date(gsub( "7/1/14", "07/01/2014"  ,readmit_201407_201506_clean$Measure.Start.Date), "%m/%d/%Y")
-readmit_201407_201506_clean$Measure.End.Date <- as.Date(gsub( "6/30/15", "06/30/2015"  ,readmit_201407_201506_clean$Measure.Start.Date), "%m/%d/%Y")
+readmit_201407_201506_clean$Measure.End.Date <- as.Date(gsub( "6/30/15", "06/30/2015"  ,readmit_201407_201506_clean$Measure.End.Date), "%m/%d/%Y")
 readmit_201407_201506_clean$State <- as.factor(readmit_201407_201506_clean$State)
 readmit_201407_201506_clean$County.Name <- as.factor(readmit_201407_201506_clean$County.Name)
 
-str(sahie_2014_clean)
-str(sahie_2015_clean)
-str(hcahps_clean)
-str(readmit_201307_201406_clean)
-str(readmit_201407_201506_clean)
+sahie_final <- inner_join(sahie_2014_clean, sahie_2015_clean, by=c("state_name" = "state_name", "county_name" = "county_name")) %>%
+  mutate( combined_sahie_metric = (PCTELIG.x*0.75)+(PCTELIG.y*0.25)) %>%
+  select(state_name, county_name, PCTELIG.x, PCTELIG.y, combined_sahie_metric)
 
-sahie_combined <- inner_join(sahie_2014_clean, sahie_2015_clean, by=c("state_name" = "state_name", "county_name" = "county_name")) %>%
-  mutate( combined_metric = (PCTELIG.x*0.25)+(PCTELIG.y*0.75) )
+readmit_final <- inner_join(readmit_201307_201406_clean, readmit_201407_201506_clean, by=c( "State" = "State", "County.Name" = "County.Name")) %>%
+  mutate(combined_readmit_metric = (Score.x*0.25)+(Score.y*0.75)) %>%
+  select(State, County.Name, Score.x, Score.y, combined_readmit_metric)
+
+hcahps_final <- select(hcahps_clean, State, County.Name, HCAHPS.Answer.Percent)
+
+str(sahie_combined)
+str(readmit_combined)
+str(hcahps_final)
