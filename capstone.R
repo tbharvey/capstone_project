@@ -49,14 +49,23 @@ readmit_201407_201506_clean$County.Name <- as.factor(readmit_201407_201506_clean
 
 sahie_final <- inner_join(sahie_2014_clean, sahie_2015_clean, by=c("state_name" = "state_name", "county_name" = "county_name")) %>%
   mutate( combined_sahie_metric = (PCTELIG.x*0.75)+(PCTELIG.y*0.25)) %>%
-  select(state_name, county_name, PCTELIG.x, PCTELIG.y, combined_sahie_metric)
+  select(state_name, county_name, PCTELIG.x, PCTELIG.y, combined_sahie_metric) %>%
+  group_by(State = state_name, County.Name = as.factor(county_name) ) %>%
+  summarise(county_unins_average = mean(combined_sahie_metric))
 
 readmit_final <- inner_join(readmit_201307_201406_clean, readmit_201407_201506_clean, by=c( "State" = "State", "County.Name" = "County.Name")) %>%
   mutate(combined_readmit_metric = (Score.x*0.25)+(Score.y*0.75)) %>%
-  select(State, County.Name, Score.x, Score.y, combined_readmit_metric)
+  select(State, County.Name, Score.x, Score.y, combined_readmit_metric) %>%
+  group_by(State = as.factor(State), County.Name = as.factor(County.Name)) %>%
+  summarise(county_readmit_average = mean(combined_readmit_metric))
 
-hcahps_final <- select(hcahps_clean, State, County.Name, HCAHPS.Answer.Percent)
+hcahps_final <- select(hcahps_clean, State, County.Name, HCAHPS.Answer.Percent) %>%
+  group_by(State, County.Name) %>%
+  summarise(county_discharge_counsel_avg = mean(as.numeric(HCAHPS.Answer.Percent)))
 
-str(sahie_combined)
-str(readmit_combined)
-str(hcahps_final)
+data_final <- inner_join(readmit_final, hcahps_final, by = c("State" = "State", "County.Name" = "County.Name")) %>%
+  inner_join(., sahie_final, by = c("State" = "State", "County.Name" = "County.Name"))
+
+lm1 <- lm(county_readmit_average ~ county_discharge_counsel_avg + county_unins_average, data=data_final)
+summary(lm1)
+anova(lm1)
