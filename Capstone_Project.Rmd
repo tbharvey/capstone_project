@@ -3,8 +3,8 @@ title: "Capstone Project"
 author: "Tim Harvey"
 date: "5/26/2017"
 output:
-  pdf_document: null
   html_document: default
+  pdf_document: null
 header-includes: \usepackage{setspace}\doublespacing
 ---
 
@@ -20,23 +20,23 @@ opts_chunk$set(tidy.opts=list(width.cutoff=80),tidy=TRUE)
 
 The goal of this project is to determine how the local uninsured rate influences the readmission rate of hospitals and whether good patient counseling, as judged by the patient, has any effect.
 
-The audience for this analysis is both hospital administrators and those that have an interest in insurance policy. If an administrator finds the local population to have a high uninsured rate, the ability to mitigate this with additional efforts targeted toward discharge counseling could be a viable technique to lower readmission rates. The readmission rate is a key indicator of quality of care and healthcare facilities are penalized by Medicare for high readmission rates. These penalties result in reimbursements being withheld and in October of 2016 these penalties were increased by 20 percent. To increase the quality of patient outcomes, advocates for increased insurance coverage may be interested in the analysis as evidence that increases in insurance coverage lower readmission rates. Lower readmission rates have the effect of lowering overall healthcare costs
-.
-The data used for this analysis will be the Small Area Health Insurance Estimates by the US Census Bureau (https://www.census.gov/did/www/sahie/data/20082014/index.html) and the Hospital-level HCAHPS data
-and readmission rate date available from Medicare (https://data.medicare.gov/data/hospital-compare).
+The audience for this analysis is both hospital administrators and those that have an interest in insurance policy. If an administrator finds the local population to have a high uninsured rate, the ability to mitigate this with additional efforts targeted toward discharge counseling could be a viable technique to lower readmission rates. The readmission rate is a key indicator of quality of care and healthcare facilities are penalized by Medicare for high readmission rates. These penalties result in reimbursements being withheld and in October of 2016 these penalties were increased by 20 percent. To increase the quality of patient outcomes, advocates for increased insurance coverage may be interested in the analysis as evidence that increases in insurance coverage lower readmission rates. Lower readmission rates have the effect of lowering overall healthcare costs.
 
-The first step is using the SAHIE data to determine the mean uninsured rate for each county in the United States that also has a hospital. Once the mean uninsured rate of the population served in each county it can then be correlated to the mean readmission rate for hospitals in that county. If there is a correlation, then the results of the HCAHPS survey can be used to determine if there is a correlation between discharge counseling and readmission rate among hospitals that have similar rates of uninsured patients.
+The data used for this analysis will be the Small Area Health Insurance Estimates (SAHIE) by the US Census Bureau (https://www.census.gov/did/www/sahie/data/20082014/index.html), and the hospital-level HCAHPS and readmission data available from Medicare (https://data.medicare.gov/data/hospital-compare).
+
+The first step is using the SAHIE data to determine the mean uninsured rate for each county in the United States. Once the mean uninsured rate of the population served in each county is determined it can then be correlated to the mean readmission rate for hospitals in that county. If there is a correlation, then the results of the HCAHPS survey can be used to determine if there is a correlation between discharge counseling and readmission rate among hospitals that have similar rates of uninsured patients.
 
 The key pieces of data in the Medicare data sets are the state and county, the readmission rate for each facility, and the HCAHPS scores for the metric associated with patient education. In the SAHIE data the key data fields are the state and county as well as the estimated uninsured rate in each county.
 
-One of the limits of the data SAHIE data is that is the uninsured rate is an estimate. Ideally, this data would be a more exact metric, but SAHIE estimates are an accepted measure of the uninsured rate. Another limitation of the data is the three data sets do not measure the same period. The SAHIE data follows calendar years, January – December, whereas the period measured by the Medicare readmission data is July – June, and the HSAHPS date is April - March. This is overcome by using the HCAHPS data time period, and weighting the time periods of other two data sets.
+One of the limits of the data SAHIE data is that is the uninsured rate is an estimate. Ideally, this data would be a more exact metric, but SAHIE estimates are an accepted measure of the uninsured rate. Another limitation of the data is the three data sets do not measure the same period. The SAHIE data follows calendar years, January – December, whereas the period measured by the Medicare readmission data is July – June, and the HCAHPS date is April - March. This is addressed by using the HCAHPS data time period, and weighting the time periods of the other two data sets.
 
-Another issue with the data is the granularity of the uninsured rate. The uninsured rate is aggregated at the county level while the data for readmission and HCAHPS scores are collected at the hospital level. Any correlation would be more meaningful if all data was at the hospital level, avoiding the need to aggregate hospital-level metrics at the county level and yielding less accurate results. Additionally, potential user of the analysis would be handicapped by the aggregation as many of the changes that could affect the readmission rate would take place at the hospital level. A missing element of the data set that would be useful would be bins for age ranges. As it is there is no way to take age into consideration, conclusions can’t be drawn regarding the impacts on various age groups.
+Another issue with the data is the granularity of the uninsured rate. The uninsured rate is aggregated at the county level while the data for readmission and HCAHPS scores are collected at the hospital level. Any correlation would be more meaningful if all data was at the hospital level, avoiding the need to aggregate hospital-level metrics at the county level and yielding less accurate results. Additionally, potential users of the analysis would be handicapped by the aggregation, as many of the changes that could affect the readmission rate would take place at the hospital level. A missing element of the data set that would be useful would be bins for age ranges. As it is, there is no way to take age into consideration and conclusions can’t be drawn regarding the impacts on various age groups.
+
+The first step in munging the SAHIE data is removing the explanatory information at the top of the file, stripping the trailing white space, filtering out the data that covers specific populations, rather than the population as a whole, and selecting only the columns that are necessary to either further cleanse the data or for the final analysis.  In this case, the year will be used to determine the final metric weighting, the state and county will be used to join the other data sets, and the PCTELIG column is the uninsured rate for the county population.
 
 ```{r load_dplyr, include=FALSE}
 library("dplyr")
 ```
-The first step in munging the SAHIE data is removing the explanatory information at the top of the file, stripping the trailing white space, filtering out the data that covers specific populations, rather than the population as a whole, and selecting only the only the columns that are necessary to either further clean the data or for the final analysis.  In this case they are the year will be used to determine the final metric weighting, the state and county will be used to join the other data sets , and the PCTELIG column is the uninsured rate for the county population.
 
 ```{r}
 sahie_2014_clean <- read.csv(file.path("Data/", "sahie_2014.csv"),stringsAsFactors = FALSE, sep = ",", skip=79, strip.white = TRUE, na.strings=c("")) %>%
@@ -50,7 +50,7 @@ sahie_2015_clean <- read.csv(file.path("Data/", "sahie_2015.csv"),stringsAsFacto
   select(year, state_name, county_name, as.numeric(PCTELIG))
 ```
 
-The next step is formatting the data in each column.  The uninsured rate for this data set needs to be converted to a numeric data type and the state and county names in the SAHIE data set do not match those in the other two sets.  The county name needs to be capitalized and the word "County" and the word "Parish" needed to be removed from the name. The state name is given as the full name, for example, "Louisiana" and needs to be converted to the abbreviation "LA".
+The next step is formatting the data in each column.  The uninsured rate needs to be converted to a numeric data type, and the state and county names do not match those in the other two sets.  The county name needs to be capitalized and the word "County" and the word "Parish" needed to be removed from the name. The state name is given as the full name, for example, "Louisiana" and needs to be converted to the abbreviation "LA".
 
 ```{r sahie1, warning=FALSE}
 sahie_2014_clean$PCTELIG <- as.numeric(sahie_2014_clean$PCTELIG)
@@ -78,7 +78,7 @@ sahie_final <- inner_join(sahie_2014_clean, sahie_2015_clean, by=c("state_name" 
   summarise(county_unins_average = mean(combined_sahie_metric))
 ```
 
-The HCAHPS data is the most straightforward to clean as it is the base timeline, so there is only one file.  The file is read, eliminating white space and formatting NA values.  Any hospital that did not fall in a county are eliminated, all measures other than the chosen metric are filtered out, an any hospital for which the data was not collected was filtered out.
+The HCAHPS data is the most straightforward to clean as it is the base timeline, so there is only one file.  The file is read, eliminating white space and formatting NA values.  Any hospital that did not fall in a county are eliminated, all measures other than the chosen metric are filtered out, and any hospital for which the data was not collected are filtered out.
 
 ```{r}
 hcahps_clean <- hcahps_201404_201503 <- read.csv(file.path("Data", "HCAHPS_Hospital_201404-201503.csv"),stringsAsFactors = FALSE, sep = ",", strip.white = TRUE, na.strings=c("", "Not Available")) %>%
@@ -144,7 +144,7 @@ readmit_final <- inner_join(readmit_201307_201406_clean, readmit_201407_201506_c
 
 The final data set on which the analysis will be preformed is derived by using nested joins and the state and county names.
 
-```{r join3, warning=FALSE}
+```{r join3, warning=FALSE, tidy=TRUE}
 data_final <- inner_join(readmit_final, hcahps_final, by = c("State" = "State", "County.Name" = "County.Name")) %>%
   inner_join(., sahie_final, by = c("State" = "State", "County.Name" = "County.Name"))
 ```
