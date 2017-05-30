@@ -1,10 +1,10 @@
 ---
 title: "Capstone Project"
 author: "Tim Harvey"
-date: "5/26/2017"
+date: "5/30/2017"
 output:
-  html_document: default
   pdf_document: null
+  html_document: default
 header-includes: \usepackage{setspace}\doublespacing
 ---
 
@@ -18,9 +18,9 @@ opts_chunk$set(tidy.opts=list(width.cutoff=80),tidy=TRUE)
 
 
 
-The goal of this project is to determine how the local uninsured rate influences the readmission rate of hospitals and whether good patient counseling, as judged by the patient, has any effect.
+The goal of this project is to determine how the local uninsured rate influences the readmission rate of hospitals and whether an increase in any of the HCAHPS linear scores has an effect.
 
-The audience for this analysis is both hospital administrators and those that have an interest in insurance policy. If an administrator finds the local population to have a high uninsured rate, the ability to mitigate this with additional efforts targeted toward discharge counseling could be a viable technique to lower readmission rates. The readmission rate is a key indicator of quality of care and healthcare facilities are penalized by Medicare for high readmission rates. These penalties result in reimbursements being withheld and in October of 2016 these penalties were increased by 20 percent. To increase the quality of patient outcomes, advocates for increased insurance coverage may be interested in the analysis as evidence that increases in insurance coverage lower readmission rates. Lower readmission rates have the effect of lowering overall healthcare costs.
+The audience for this analysis is both hospital administrators and those that have an interest in insurance policy. If an administrator finds the local population to have a high uninsured rate, the ability to mitigate this with additional efforts targeted toward the most predictive HCAHPS scores to lower readmission rates. The readmission rate is a key indicator of quality of care and healthcare facilities are penalized by Medicare for high readmission rates. These penalties result in reimbursements being withheld and in October of 2016 these penalties were increased by 20 percent. To increase the quality of patient outcomes, advocates for increased insurance coverage may be interested in the analysis as evidence that increases in insurance coverage lower readmission rates. Lower readmission rates have the effect of lowering overall healthcare costs.
 
 The data used for this analysis will be the Small Area Health Insurance Estimates (SAHIE) by the US Census Bureau (https://www.census.gov/did/www/sahie/data/20082014/index.html), and the hospital-level HCAHPS and readmission data available from Medicare (https://data.medicare.gov/data/hospital-compare).
 
@@ -34,8 +34,10 @@ Another issue with the data is the granularity of the uninsured rate. The uninsu
 
 The first step in munging the SAHIE data is removing the explanatory information at the top of the file, stripping the trailing white space, filtering out the data that covers specific populations, rather than the population as a whole, and selecting only the columns that are necessary to either further cleanse the data or for the final analysis.  In this case, the year will be used to determine the final metric weighting, the state and county will be used to join the other data sets, and the PCTELIG column is the uninsured rate for the county population.
 
-```{r load_dplyr, include=FALSE}
+```{r load_libraries, include=FALSE}
 library("dplyr")
+library("tidyr")
+library("ggplot2")
 ```
 
 ```{r}
@@ -78,29 +80,27 @@ sahie_final <- inner_join(sahie_2014_clean, sahie_2015_clean, by=c("state_name" 
   summarise(county_unins_average = mean(combined_sahie_metric))
 ```
 
-The HCAHPS data is the most straightforward to clean as it is the base timeline, so there is only one file.  The file is read, eliminating white space and formatting NA values.  Any hospital that did not fall in a county are eliminated, all measures other than the chosen metric are filtered out, and any hospital for which the data was not collected are filtered out.
+The HCAHPS data is the most straightforward to clean as it is the base timeline, so there is only one file.  The file is read, eliminating white space and formatting NA values.  The required fields are then selected and the spread function is applied to make each HCAHPS measure a field of it's own.
 
 ```{r}
-hcahps_clean <- hcahps_201404_201503 <- read.csv(file.path("Data", "HCAHPS_Hospital_201404-201503.csv"),stringsAsFactors = FALSE, sep = ",", strip.white = TRUE, na.strings=c("", "Not Available")) %>%
-  filter(HCAHPS.Measure.ID == "H_COMP_6_Y_P", County.Name != "NA", HCAHPS.Answer.Percent != "NA") %>%
-  select(Measure.Start.Date, Measure.End.Date, State, County.Name, HCAHPS.Measure.ID, HCAHPS.Answer.Percent)
+hcahps_clean <- read.csv(file.path("Data", "HCAHPS_Hospital_201404-201503.csv"),stringsAsFactors = FALSE, sep = ",", strip.white = TRUE, na.strings=c("", "Not Available", "Not Applicable", "FEWER THAN 50")) %>%
+  select(Provider.ID, State, County.Name, HCAHPS.Measure.ID, HCAHPS.Linear.Mean.Value) %>%
+  spread(HCAHPS.Measure.ID, HCAHPS.Linear.Mean.Value)
 ```
 
-The date format does not include a leading zero for single-digit months and days.  The leading zero is required for conversion to a date data type.  Since there are only two dates they can be replaced with a simple gsub.  The state and county names are converted to factors.
+The state and county names are converted to factors.
 
 ```{r}
-hcahps_clean$Measure.End.Date <- as.Date(hcahps_clean$Measure.End.Date, "%m/%d/%Y")
-hcahps_clean$Measure.Start.Date <- as.Date(hcahps_clean$Measure.Start.Date, "%m/%d/%Y")
 hcahps_clean$State <- as.factor(hcahps_clean$State)
 hcahps_clean$County.Name <- as.factor(hcahps_clean$County.Name)
 ```
 
-The final HCAHPS data is generated by selecting the state name, county name, and the necessary metric.  The data is then converted to a numeric data type and averaged across county and state yielding a mean score for each county.  The name of the measure is changed to "county_discharge_counsel_avg" for clarity.
+The final HCAHPS data is generated by selecting the state name, county name, and the fields of the HCAHPS scores.  The data is then across county and state, using a  yielding a mean score for each county for each of the mean scores.
 
 ```{r}
-hcahps_final <- select(hcahps_clean, State, County.Name, HCAHPS.Answer.Percent) %>%
-  group_by(State, County.Name) %>%
-  summarise(county_discharge_counsel_avg = mean(as.numeric(HCAHPS.Answer.Percent)))
+hcahps_select_target <- c("H_CLEAN_LINEAR_SCORE", "H_COMP_1_LINEAR_SCORE", "H_COMP_2_LINEAR_SCORE", "H_COMP_3_LINEAR_SCORE", "H_COMP_4_LINEAR_SCORE", "H_COMP_5_LINEAR_SCORE", "H_COMP_6_LINEAR_SCORE", "H_COMP_7_LINEAR_SCORE", "H_HSP_RATING_LINEAR_SCORE", "H_QUIET_LINEAR_SCORE", "H_RECMND_LINEAR_SCORE")
+hcahps_final <- hcahps_clean %>% group_by(State, County.Name) %>%
+  summarise_each(funs(mean(.,na.rm = TRUE)), one_of(hcahps_select_target))
 ```
 
 The munging of the readmission data is very similar to the HCAHPS data, as they are from the same source and the same formatting conventions are used.  The notable exception is there are two files that must be weighted to derive the final metric. The file is read eliminating white space and formatting NA values and the unnecessary scores and missing data are filtered out. 
@@ -147,12 +147,145 @@ The final data set on which the analysis will be preformed is derived by using n
 ```{r join3, warning=FALSE, tidy=TRUE}
 data_final <- inner_join(readmit_final, hcahps_final, by = c("State" = "State", "County.Name" = "County.Name")) %>%
   inner_join(., sahie_final, by = c("State" = "State", "County.Name" = "County.Name"))
+str(data_final)
 ```
 
-This is some basic analysis to start.
+This analysis shows there is almost no correlation between the uninsured rate and the readmission rate in each county.
 
 ```{r}
-lm1 <- lm(county_readmit_average ~ county_discharge_counsel_avg + county_unins_average, data=data_final)
+analyze_data <- data_final[c(3,15)]
+lm1 <- lm(county_readmit_average ~ county_unins_average, data=analyze_data)
 summary(lm1)
-anova(lm1)
+str(data_final[c(3,15)])
+
 ```
+
+```{r}
+ggplotRegression <- function (fit) {
+  
+  require(ggplot2)
+  
+  ggplot(fit$model, aes_string(x = names(fit$model)[2], y = names(fit$model)[1])) + 
+    geom_point() +
+    stat_smooth(method = "lm", col = "red") +
+    labs(title = paste("Adj R2 = ",signif(summary(fit)$adj.r.squared, 5),
+                       "Intercept =",signif(fit$coef[[1]],5 ),
+                       " Slope =",signif(fit$coef[[2]], 5),
+                       " P =",signif(summary(fit)$coef[2,4], 5)))
+}
+```
+
+```{r unis_reg, echo=TRUE}
+ggplotRegression(lm1)
+```
+
+The highest adjusted R squared value for a single attribute, when aggregated at the county level is 0.08.
+
+```{r adjR_list, echo=TRUE}
+for(i in 4:15) {
+analyze_data <- data_final[c(3,i)]
+lm1 <- lm(county_readmit_average ~ ., data=analyze_data)
+print(colnames(data_final[i]))
+print(summary(lm1)$adj.r.squared)
+}
+```
+
+Because of the low adjusted R squared value for the county uninsured rate it can be removed as a contributing factor and the HCAHPS scores and the readmission rate can be evaluated at the hospital level.  The data cleansing is largely the same with the exception of discarding the Provider ID and averaging the results across the County and State pairs.
+
+Readmission data cleansing
+
+```{r}
+readmit_201307_201406_clean <- read.csv(file.path("Data", "Readmissions_and_Deaths 201307-201406_Hospital.csv"),stringsAsFactors = FALSE, sep = ",", strip.white = TRUE, na.strings=c("", "Not Available")) %>%
+  filter(Measure.ID == "READM_30_HOSP_WIDE", Score != "NA" ) %>%
+  select(Provider.ID, Score)
+
+readmit_201307_201406_clean$Provider.ID <- as.factor(readmit_201307_201406_clean$Provider.ID)
+str(readmit_201307_201406_clean)
+
+readmit_201407_201506_clean <- read.csv(file.path("Data", "Readmissions_and_Deaths 201407-201506_Hospital.csv"),stringsAsFactors = FALSE, sep = ",", strip.white = TRUE, na.strings=c("", "Not Available")) %>%
+  filter(Measure.ID == "READM_30_HOSP_WIDE", Score != "NA" ) %>%
+  select(Provider.ID, Score)
+  
+readmit_201407_201506_clean$Provider.ID <- as.factor(readmit_201407_201506_clean$Provider.ID)
+str(readmit_201407_201506_clean)
+
+readmit_final <- inner_join(readmit_201307_201406_clean, readmit_201407_201506_clean, by=c( "Provider.ID" = "Provider.ID")) %>%
+  mutate(combined_readmit_metric = (Score.x*0.25)+(Score.y*0.75)) %>%
+  select(Provider.ID, combined_readmit_metric)
+str(readmit_final)
+```
+
+HCAHPS data cleansing
+
+```{r}
+hcahps_select_target <- c("H_CLEAN_LINEAR_SCORE", "H_COMP_1_LINEAR_SCORE", "H_COMP_2_LINEAR_SCORE", "H_COMP_3_LINEAR_SCORE", "H_COMP_4_LINEAR_SCORE", "H_COMP_5_LINEAR_SCORE", "H_COMP_6_LINEAR_SCORE", "H_COMP_7_LINEAR_SCORE", "H_HSP_RATING_LINEAR_SCORE", "H_QUIET_LINEAR_SCORE", "H_RECMND_LINEAR_SCORE")
+hcahps_final <- read.csv(file.path("Data", "HCAHPS_Hospital_201404-201503.csv"),stringsAsFactors = FALSE, sep = ",", strip.white = TRUE, na.strings=c("", "Not Available", "Not Applicable", "FEWER THAN 50")) %>%
+  filter(HCAHPS.Measure.ID %in% hcahps_select_target) %>%
+  select(Provider.ID, HCAHPS.Measure.ID, HCAHPS.Linear.Mean.Value) %>%
+  spread(HCAHPS.Measure.ID, HCAHPS.Linear.Mean.Value)
+
+hcahps_final$Provider.ID <- as.factor(hcahps_final$Provider.ID)
+```
+
+Joining HCAHPS data and readmission data for final analysis set.
+
+```{r}
+data_final <- inner_join(readmit_final, hcahps_final, by = c("Provider.ID" = "Provider.ID"))
+```
+
+Adjusted R squared for all variables in data set.
+
+```{r, echo=TRUE}
+analyze_data <- data_final[c(2:13)]
+lm1 <- lm(combined_readmit_metric ~ ., data=analyze_data)
+summary(lm1)
+```
+
+Splitting the data for testing.  50% will be used for the training set and 50% will be used as the test set.
+
+```{r}
+indexes <- sample(1:nrow(data_final), size=0.50*nrow(data_final))
+
+data_final_test <- data_final[-indexes,]
+data_final_train <- data_final[indexes,]
+```
+
+Run summary to determine adjusted R squared for all variables.
+
+```{r, echo=TRUE}
+analyze_data_train <- data_final_train[c(2:13)]
+lm2 <- lm(combined_readmit_metric ~ ., data=data_final_train[c(2:13)])
+summary(lm2)
+```
+
+Remove variables with lower significance in attempt to increase adjusted R squared.
+
+```{r, echo=TRUE}
+lm2 <- lm(combined_readmit_metric ~ ., data=data_final_train[c(2,4,6,8,9,10,13)])
+summary(lm2)
+```
+
+Create model
+
+```{r, echo=TRUE}
+readmit_hcahps_model <- lm(combined_readmit_metric ~  H_COMP_1_LINEAR_SCORE + H_COMP_3_LINEAR_SCORE + H_COMP_5_LINEAR_SCORE + H_COMP_6_LINEAR_SCORE + H_COMP_7_LINEAR_SCORE + H_RECMND_LINEAR_SCORE, data=data_final_train)
+summary(readmit_hcahps_model)
+
+```
+```{r model_reg, echo=TRUE}
+ggplotRegression(readmit_hcahps_model)
+```
+
+Run model with test data set
+
+```{r}
+readmit_hcahps_model_test <- lm(combined_readmit_metric ~  H_COMP_1_LINEAR_SCORE + H_COMP_3_LINEAR_SCORE + H_COMP_5_LINEAR_SCORE + H_COMP_6_LINEAR_SCORE + H_COMP_7_LINEAR_SCORE + H_RECMND_LINEAR_SCORE, data=data_final_test)
+summary(readmit_hcahps_model_test)
+```
+```{r test_reg, echo=TRUE}
+ggplotRegression(readmit_hcahps_model_test)
+```
+
+Clearly there is not a strong correlation between any one of the HCAHPS factors and readmission rate and only a slight correlation using the best combination of factors.  That said, the analysis can still of use to those aiming to reduce readmission rate.  With limited resources focus is best applied to improve those metrics that measure how well patients feel they are educated upon discharge (H_COMP_6_LINEAR_SCORE, H_COMP_7_LINEAR_SCORE) and the responsiveness of the staff (H_COMP_3_LINEAR_SCORE).
+
+While the analysis of the HCAHPS data is not necessarily predictive, it does offer guidance as to which secondary factors focus may be best applied to improve patient outcomes.
