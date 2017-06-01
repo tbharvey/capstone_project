@@ -3,8 +3,8 @@ title: "Capstone Project"
 author: "Tim Harvey"
 date: "5/30/2017"
 output:
-  pdf_document: null
   html_document: default
+  pdf_document: null
 header-includes: \usepackage{setspace}\doublespacing
 ---
 
@@ -215,7 +215,7 @@ readmit_final <- inner_join(readmit_201307_201406_clean, readmit_201407_201506_c
 str(readmit_final)
 ```
 
-HCAHPS data cleansing
+HCAHPS data cleansing 
 
 ```{r}
 hcahps_select_target <- c("H_CLEAN_LINEAR_SCORE", "H_COMP_1_LINEAR_SCORE", "H_COMP_2_LINEAR_SCORE", "H_COMP_3_LINEAR_SCORE", "H_COMP_4_LINEAR_SCORE", "H_COMP_5_LINEAR_SCORE", "H_COMP_6_LINEAR_SCORE", "H_COMP_7_LINEAR_SCORE", "H_HSP_RATING_LINEAR_SCORE", "H_QUIET_LINEAR_SCORE", "H_RECMND_LINEAR_SCORE")
